@@ -1,0 +1,58 @@
+{
+  "src/index.ts": {
+    "@typescript-eslint/restrict-template-expressions": {
+      "count": 1
+    },
+    "@typescript-eslint/use-unknown-in-catch-callback-variable": {
+      "count": 1
+    },
+    "id-length": {
+      "count": 2
+    }
+  },
+  "src/infrastructure/ai/geminiSummarizer.ts": {
+    "id-length": {
+      "count": 1
+    },
+    "preserve-caught-error": {
+      "count": 1
+    }
+  },
+  "src/infrastructure/fetchers/rssFetcher.ts": {
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 1
+    },
+    "preserve-caught-error": {
+      "count": 1
+    }
+  },
+  "src/infrastructure/publishers/slackPublisher.ts": {
+    "@typescript-eslint/no-confusing-void-expression": {
+      "count": 1
+    },
+    "@typescript-eslint/restrict-template-expressions": {
+      "count": 1
+    },
+    "preserve-caught-error": {
+      "count": 1
+    },
+    "sonarjs/no-nested-template-literals": {
+      "count": 1
+    }
+  },
+  "tests/infrastructure/geminiSummarizer.test.ts": {
+    "id-length": {
+      "count": 3
+    }
+  },
+  "tests/infrastructure/rssFetcher.test.ts": {
+    "@typescript-eslint/restrict-template-expressions": {
+      "count": 3
+    }
+  },
+  "tests/usecases/collectAndSummarize.test.ts": {
+    "id-length": {
+      "count": 4
+    }
+  }
+}
