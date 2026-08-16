@@ -10,7 +10,7 @@ export interface CollectAndSummarizeDeps {
 }
 
 export interface CollectAndSummarizeParams {
-  ai: GenerateContentClient;
+  genAiClient: GenerateContentClient;
   slackWebhookUrl: string;
 }
 
@@ -25,7 +25,7 @@ export const collectAndSummarize = async (params: CollectAndSummarizeParams, dep
   const summarized: SummarizedArticle[] = await Promise.all(
     articles.map(async (article) => ({
       ...article,
-      summary: await deps.summarize(params.ai, article),
+      summary: await deps.summarize(params.genAiClient, article),
     })),
   );
   await deps.publish(params.slackWebhookUrl, summarized);

@@ -17,9 +17,9 @@ describe("summarizeArticle", () => {
         target: "初中級エンジニア向け",
       }),
     });
-    const ai = { models: { generateContent: generateContentMock } };
+    const genAiClient = { models: { generateContent: generateContentMock } };
 
-    const result = await summarizeArticle(ai, article);
+    const result = await summarizeArticle(genAiClient, article);
 
     expect(result).toEqual({
       summary: "テスト要約です。",
@@ -33,15 +33,15 @@ describe("summarizeArticle", () => {
     const generateContentMock = vi.fn().mockResolvedValue({
       text: JSON.stringify({ summary: "incomplete" }),
     });
-    const ai = { models: { generateContent: generateContentMock } };
+    const genAiClient = { models: { generateContent: generateContentMock } };
 
-    await expect(summarizeArticle(ai, article)).rejects.toThrow(article.link);
+    await expect(summarizeArticle(genAiClient, article)).rejects.toThrow(article.link);
   });
 
   it("throws a contextual error when the response text is empty", async () => {
     const generateContentMock = vi.fn().mockResolvedValue({ text: undefined });
-    const ai = { models: { generateContent: generateContentMock } };
+    const genAiClient = { models: { generateContent: generateContentMock } };
 
-    await expect(summarizeArticle(ai, article)).rejects.toThrow(article.link);
+    await expect(summarizeArticle(genAiClient, article)).rejects.toThrow(article.link);
   });
 });

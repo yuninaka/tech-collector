@@ -13,13 +13,13 @@ const main = async (): Promise<void> => {
     throw new Error("SLACK_WEBHOOK_URL is not set in environment variables");
   }
 
-  const ai = new GoogleGenAI({ apiKey: geminiApiKey });
-  const summarized = await collectAndSummarize({ ai, slackWebhookUrl });
+  const genAiClient = new GoogleGenAI({ apiKey: geminiApiKey });
+  const summarized = await collectAndSummarize({ genAiClient, slackWebhookUrl });
 
-  console.log(`Published ${summarized.length} articles to Slack.`);
+  console.log(`Published ${String(summarized.length)} articles to Slack.`);
 };
 
-main().catch((error) => {
+main().catch((error: unknown) => {
   console.error(error);
   process.exitCode = 1;
 });

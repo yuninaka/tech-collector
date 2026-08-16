@@ -14,9 +14,9 @@ describe("fetchLatestArticles", () => {
   it("returns at most 5 articles mapped from feed items", async () => {
     parseURLMock.mockResolvedValue({
       items: Array.from({ length: 7 }, (_, i) => ({
-        title: `Article ${i}`,
-        link: `https://zenn.dev/articles/${i}`,
-        contentSnippet: `snippet ${i}`,
+        title: `Article ${String(i)}`,
+        link: `https://zenn.dev/articles/${String(i)}`,
+        contentSnippet: `snippet ${String(i)}`,
         isoDate: "2026-08-17T00:00:00Z",
       })),
     });

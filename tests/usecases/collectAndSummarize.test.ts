@@ -13,9 +13,9 @@ describe("collectAndSummarize", () => {
     const fetchArticles = vi.fn().mockResolvedValue(articles);
     const summarize = vi.fn().mockResolvedValue(summary);
     const publish = vi.fn().mockResolvedValue(undefined);
-    const ai = { models: { generateContent: vi.fn() } };
+    const genAiClient = { models: { generateContent: vi.fn() } };
 
-    const result = await collectAndSummarize({ ai, slackWebhookUrl: "https://hooks.slack.test/xxx" }, { fetchArticles, summarize, publish });
+    const result = await collectAndSummarize({ genAiClient, slackWebhookUrl: "https://hooks.slack.test/xxx" }, { fetchArticles, summarize, publish });
 
     expect(result).toEqual([
       { ...articles[0], summary },
@@ -32,9 +32,9 @@ describe("collectAndSummarize", () => {
     const fetchArticles = vi.fn().mockResolvedValue(articles);
     const summarize = vi.fn().mockResolvedValue(summary);
     const publish = vi.fn().mockRejectedValue(new Error("slack down"));
-    const ai = { models: { generateContent: vi.fn() } };
+    const genAiClient = { models: { generateContent: vi.fn() } };
 
-    await expect(collectAndSummarize({ ai, slackWebhookUrl: "https://hooks.slack.test/xxx" }, { fetchArticles, summarize, publish })).rejects.toThrow(
+    await expect(collectAndSummarize({ genAiClient, slackWebhookUrl: "https://hooks.slack.test/xxx" }, { fetchArticles, summarize, publish })).rejects.toThrow(
       "slack down",
     );
   });
