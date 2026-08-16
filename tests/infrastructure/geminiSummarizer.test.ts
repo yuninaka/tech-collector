@@ -26,7 +26,7 @@ describe("summarizeArticle", () => {
       tags: ["TypeScript", "Testing"],
       target: "初中級エンジニア向け",
     });
-    expect(generateContentMock).toHaveBeenCalledWith(expect.objectContaining({ model: "gemini-2.5-flash" }));
+    expect(generateContentMock).toHaveBeenCalledWith(expect.objectContaining({ model: "gemini-3.5-flash" }));
   });
 
   it("throws a contextual error when the response fails schema validation", async () => {

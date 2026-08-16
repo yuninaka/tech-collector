@@ -1,7 +1,7 @@
 import { Type, type Schema } from "@google/genai";
 import { Article, ArticleSummary, articleSummarySchema } from "../../domain/article";
 
-const MODEL_NAME = "gemini-2.5-flash";
+const MODEL_NAME = "gemini-3.5-flash";
 
 const RESPONSE_SCHEMA: Schema = {
   type: Type.OBJECT,
