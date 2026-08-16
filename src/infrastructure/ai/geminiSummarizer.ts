@@ -30,9 +30,9 @@ const buildPrompt = (article: Article): string =>
     "- target: どんなエンジニア向けかを1文で",
   ].join("\n");
 
-export const summarizeArticle = async (ai: GenerateContentClient, article: Article): Promise<ArticleSummary> => {
+export const summarizeArticle = async (genAiClient: GenerateContentClient, article: Article): Promise<ArticleSummary> => {
   try {
-    const response = await ai.models.generateContent({
+    const response = await genAiClient.models.generateContent({
       model: MODEL_NAME,
       contents: buildPrompt(article),
       config: {
@@ -49,6 +49,6 @@ export const summarizeArticle = async (ai: GenerateContentClient, article: Artic
     }
     return parsed.data;
   } catch (error) {
-    throw new Error(`Failed to summarize article (${article.link}): ${error instanceof Error ? error.message : String(error)}`);
+    throw new Error(`Failed to summarize article (${article.link}): ${error instanceof Error ? error.message : String(error)}`, { cause: error });
   }
 };

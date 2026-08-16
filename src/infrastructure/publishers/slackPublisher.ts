@@ -9,27 +9,27 @@ const buildBlocks = (articles: SummarizedArticle[]): SlackBlock[] => {
     type: "header",
     text: { type: "plain_text", text: "📰 今日の技術記事まとめ", emoji: true },
   };
-  const articleBlocks: SlackBlock[] = articles.flatMap((article) => [
-    { type: "divider" },
-    {
-      type: "section",
-      text: {
-        type: "mrkdwn",
-        text: [
-          `*<${article.link}|${article.title}>*`,
-          article.summary.summary,
-          `*対象:* ${article.summary.target}`,
-          `*タグ:* ${article.summary.tags.map((tag) => `\`${tag}\``).join(" ")}`,
-        ].join("\n"),
+  const articleBlocks: SlackBlock[] = articles.flatMap((article) => {
+    const tagList = article.summary.tags.map((tag) => `\`${tag}\``).join(" ");
+    return [
+      { type: "divider" },
+      {
+        type: "section",
+        text: {
+          type: "mrkdwn",
+          text: [`*<${article.link}|${article.title}>*`, article.summary.summary, `*対象:* ${article.summary.target}`, `*タグ:* ${tagList}`].join("\n"),
+        },
       },
-    },
-  ]);
+    ];
+  });
   return [header, ...articleBlocks];
 };
 
 export const publishToSlack = async (webhookUrl: string, articles: SummarizedArticle[]): Promise<void> => {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  const timeoutId = setTimeout(() => {
+    controller.abort();
+  }, REQUEST_TIMEOUT_MS);
   try {
     const response = await fetch(webhookUrl, {
       method: "POST",
@@ -39,10 +39,10 @@ export const publishToSlack = async (webhookUrl: string, articles: SummarizedArt
     });
     if (!response.ok) {
       const body = await response.text();
-      throw new Error(`Slack webhook returned status ${response.status}: ${body}`);
+      throw new Error(`Slack webhook returned status ${String(response.status)}: ${body}`);
     }
   } catch (error) {
-    throw new Error(`Failed to publish to Slack (${webhookUrl}): ${error instanceof Error ? error.message : String(error)}`);
+    throw new Error(`Failed to publish to Slack (${webhookUrl}): ${error instanceof Error ? error.message : String(error)}`, { cause: error });
   } finally {
     clearTimeout(timeoutId);
   }

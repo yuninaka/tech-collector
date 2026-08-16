@@ -2,7 +2,7 @@
   "version": 1,
   "tool": "ever-better",
   "phase": "drain",
-  "updatedAt": "2026-08-16T16:07:50.262Z",
+  "updatedAt": "2026-08-16T16:25:39.444Z",
   "frozenAt": "2026-08-16T16:06:54.139Z",
   "diagnosedAt": "2026-08-16T16:06:21.186Z",
   "diagnosedCommit": "ceab322337145f052c02485b250da80ea504abf9",
@@ -73,39 +73,39 @@
       "status": "enforced"
     },
     "id-length": {
-      "baseline": 10,
-      "current": 10,
-      "status": "draining"
+      "baseline": 0,
+      "current": 0,
+      "status": "enforced"
     },
     "@typescript-eslint/restrict-template-expressions": {
-      "baseline": 5,
-      "current": 5,
-      "status": "draining"
+      "baseline": 0,
+      "current": 0,
+      "status": "enforced"
     },
     "@typescript-eslint/use-unknown-in-catch-callback-variable": {
-      "baseline": 1,
-      "current": 1,
-      "status": "draining"
+      "baseline": 0,
+      "current": 0,
+      "status": "enforced"
     },
     "preserve-caught-error": {
-      "baseline": 3,
-      "current": 3,
-      "status": "draining"
+      "baseline": 0,
+      "current": 0,
+      "status": "enforced"
     },
     "@typescript-eslint/no-unnecessary-condition": {
-      "baseline": 1,
-      "current": 1,
-      "status": "draining"
+      "baseline": 0,
+      "current": 0,
+      "status": "enforced"
     },
     "sonarjs/no-nested-template-literals": {
-      "baseline": 1,
-      "current": 1,
-      "status": "draining"
+      "baseline": 0,
+      "current": 0,
+      "status": "enforced"
     },
     "@typescript-eslint/no-confusing-void-expression": {
-      "baseline": 1,
-      "current": 1,
-      "status": "draining"
+      "baseline": 0,
+      "current": 0,
+      "status": "enforced"
     }
   },
   "counters": {
