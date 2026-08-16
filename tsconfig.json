@@ -1,5 +1,9 @@
 {
   "compilerOptions": {
+    // Enabled by ever-better after measuring each at zero new type errors.
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitOverride": true,
     "target": "ES2022",
     "module": "ESNext",
     "moduleResolution": "bundler",
