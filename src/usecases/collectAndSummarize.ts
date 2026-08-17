@@ -1,12 +1,12 @@
 import { fetchLatestArticles } from "../infrastructure/fetchers/rssFetcher";
-import { summarizeArticle, GenerateContentClient } from "../infrastructure/ai/geminiSummarizer";
+import { summarizeArticles, GenerateContentClient } from "../infrastructure/ai/geminiSummarizer";
 import { publishToSlack } from "../infrastructure/publishers/slackPublisher";
 import { loadProcessedUrls, saveProcessedUrls } from "../infrastructure/store/processedStore";
 import { Article, SummarizedArticle } from "../domain/article";
 
 export interface CollectAndSummarizeDeps {
   fetchArticles: typeof fetchLatestArticles;
-  summarize: typeof summarizeArticle;
+  summarize: typeof summarizeArticles;
   publish: typeof publishToSlack;
   loadProcessedUrls: typeof loadProcessedUrls;
   saveProcessedUrls: typeof saveProcessedUrls;
@@ -19,7 +19,7 @@ export interface CollectAndSummarizeParams {
 
 const defaultDeps: CollectAndSummarizeDeps = {
   fetchArticles: fetchLatestArticles,
-  summarize: summarizeArticle,
+  summarize: summarizeArticles,
   publish: publishToSlack,
   loadProcessedUrls,
   saveProcessedUrls,
@@ -38,12 +38,7 @@ export const collectAndSummarize = async (params: CollectAndSummarizeParams, dep
     return [];
   }
 
-  const summarized: SummarizedArticle[] = await Promise.all(
-    unprocessedArticles.map(async (article) => ({
-      ...article,
-      summary: await deps.summarize(params.genAiClient, article),
-    })),
-  );
+  const summarized = await deps.summarize(params.genAiClient, unprocessedArticles);
   await deps.publish(params.slackWebhookUrl, summarized);
   await deps.saveProcessedUrls([...processedUrls, ...summarized.map((article) => article.link)]);
   return summarized;
