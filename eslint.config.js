@@ -112,7 +112,8 @@ export default tseslint.config(
   },
   {
     // A spec repeats itself by nature and its length is not a comprehension problem.
-    files: ["test/**"],
+    // This repo's specs live under tests/, not test/.
+    files: ["tests/**"],
     rules: {
       "max-lines": "off",
       "max-lines-per-function": "off",
@@ -123,5 +124,15 @@ export default tseslint.config(
     files: ["**/*.config.js", "**/*.config.mjs", "**/*.config.cjs"],
     languageOptions: { parserOptions: { projectService: false } },
     ...tseslint.configs.disableTypeChecked,
+  },
+  {
+    // The file-storage layer takes its path as a parameter so tests can point it at a temp
+    // directory. That path only ever comes from our own default constant or a caller in this
+    // codebase — never from a request, the RSS feed, or an LLM response — so this rule has no
+    // untrusted input to catch here and only flags the dependency-injection pattern itself.
+    files: ["src/infrastructure/store/**", "tests/infrastructure/processedStore.test.ts"],
+    rules: {
+      "security/detect-non-literal-fs-filename": "off",
+    },
   },
 );
