@@ -1,9 +1,19 @@
 import { describe, expect, it, vi } from "vitest";
-import { collectAndSummarize } from "../../src/usecases/collectAndSummarize";
+import { collectAndSummarize, CollectAndSummarizeDeps } from "../../src/usecases/collectAndSummarize";
 import { Article, ArticleSummary } from "../../src/domain/article";
 
 const genAiClient = { models: { generateContent: vi.fn() } };
+const slackWebhookUrl = "https://hooks.slack.test/xxx";
 const summary: ArticleSummary = { summary: "sum", tags: ["t"], target: "target" };
+
+const buildDeps = (overrides: Partial<CollectAndSummarizeDeps> = {}): CollectAndSummarizeDeps => ({
+  fetchArticles: vi.fn().mockResolvedValue([]),
+  summarize: vi.fn().mockResolvedValue([]),
+  publish: vi.fn().mockResolvedValue(undefined),
+  loadProcessedUrls: vi.fn().mockResolvedValue([]),
+  saveProcessedUrls: vi.fn().mockResolvedValue(undefined),
+  ...overrides,
+});
 
 describe("collectAndSummarize", () => {
   it("fetches, summarizes in a single batch, publishes, and records unprocessed articles", async () => {
@@ -11,29 +21,23 @@ describe("collectAndSummarize", () => {
       { title: "A1", link: "https://zenn.dev/a1", contentSnippet: "s1" },
       { title: "A2", link: "https://zenn.dev/a2", contentSnippet: "s2" },
     ];
-
-    const fetchArticles = vi.fn().mockResolvedValue(articles);
-    const summarize = vi.fn().mockResolvedValue([
+    const summarized = [
       { ...articles[0], summary },
       { ...articles[1], summary },
-    ]);
-    const publish = vi.fn().mockResolvedValue(undefined);
-    const loadProcessedUrls = vi.fn().mockResolvedValue(["https://zenn.dev/old"]);
-    const saveProcessedUrls = vi.fn().mockResolvedValue(undefined);
+    ];
+    const deps = buildDeps({
+      fetchArticles: vi.fn().mockResolvedValue(articles),
+      summarize: vi.fn().mockResolvedValue(summarized),
+      loadProcessedUrls: vi.fn().mockResolvedValue(["https://zenn.dev/old"]),
+    });
 
-    const result = await collectAndSummarize(
-      { genAiClient, slackWebhookUrl: "https://hooks.slack.test/xxx" },
-      { fetchArticles, summarize, publish, loadProcessedUrls, saveProcessedUrls },
-    );
+    const result = await collectAndSummarize({ genAiClient, slackWebhookUrl }, deps);
 
-    expect(result).toEqual([
-      { ...articles[0], summary },
-      { ...articles[1], summary },
-    ]);
-    expect(summarize).toHaveBeenCalledTimes(1);
-    expect(summarize).toHaveBeenCalledWith(genAiClient, articles);
-    expect(publish).toHaveBeenCalledWith("https://hooks.slack.test/xxx", result);
-    expect(saveProcessedUrls).toHaveBeenCalledWith(["https://zenn.dev/old", "https://zenn.dev/a1", "https://zenn.dev/a2"]);
+    expect(result).toEqual(summarized);
+    expect(deps.summarize).toHaveBeenCalledTimes(1);
+    expect(deps.summarize).toHaveBeenCalledWith(genAiClient, articles);
+    expect(deps.publish).toHaveBeenCalledWith(slackWebhookUrl, result);
+    expect(deps.saveProcessedUrls).toHaveBeenCalledWith(["https://zenn.dev/old", "https://zenn.dev/a1", "https://zenn.dev/a2"]);
   });
 
   it("skips already-processed articles", async () => {
@@ -41,60 +45,45 @@ describe("collectAndSummarize", () => {
       { title: "A1", link: "https://zenn.dev/a1" },
       { title: "A2", link: "https://zenn.dev/a2" },
     ];
+    const summarized = [{ ...articles[1], summary }];
+    const deps = buildDeps({
+      fetchArticles: vi.fn().mockResolvedValue(articles),
+      summarize: vi.fn().mockResolvedValue(summarized),
+      loadProcessedUrls: vi.fn().mockResolvedValue(["https://zenn.dev/a1"]),
+    });
 
-    const fetchArticles = vi.fn().mockResolvedValue(articles);
-    const summarize = vi.fn().mockResolvedValue([{ ...articles[1], summary }]);
-    const publish = vi.fn().mockResolvedValue(undefined);
-    const loadProcessedUrls = vi.fn().mockResolvedValue(["https://zenn.dev/a1"]);
-    const saveProcessedUrls = vi.fn().mockResolvedValue(undefined);
+    const result = await collectAndSummarize({ genAiClient, slackWebhookUrl }, deps);
 
-    const result = await collectAndSummarize(
-      { genAiClient, slackWebhookUrl: "https://hooks.slack.test/xxx" },
-      { fetchArticles, summarize, publish, loadProcessedUrls, saveProcessedUrls },
-    );
-
-    expect(result).toEqual([{ ...articles[1], summary }]);
-    expect(summarize).toHaveBeenCalledTimes(1);
-    expect(summarize).toHaveBeenCalledWith(genAiClient, [articles[1]]);
-    expect(publish).toHaveBeenCalledWith("https://hooks.slack.test/xxx", result);
-    expect(saveProcessedUrls).toHaveBeenCalledWith(["https://zenn.dev/a1", "https://zenn.dev/a2"]);
+    expect(result).toEqual(summarized);
+    expect(deps.summarize).toHaveBeenCalledWith(genAiClient, [articles[1]]);
+    expect(deps.publish).toHaveBeenCalledWith(slackWebhookUrl, result);
+    expect(deps.saveProcessedUrls).toHaveBeenCalledWith(["https://zenn.dev/a1", "https://zenn.dev/a2"]);
   });
 
   it("skips summarize, publish, and save when every article is already processed", async () => {
     const articles: Article[] = [{ title: "A1", link: "https://zenn.dev/a1" }];
+    const deps = buildDeps({
+      fetchArticles: vi.fn().mockResolvedValue(articles),
+      loadProcessedUrls: vi.fn().mockResolvedValue(["https://zenn.dev/a1"]),
+    });
 
-    const fetchArticles = vi.fn().mockResolvedValue(articles);
-    const summarize = vi.fn().mockResolvedValue([]);
-    const publish = vi.fn().mockResolvedValue(undefined);
-    const loadProcessedUrls = vi.fn().mockResolvedValue(["https://zenn.dev/a1"]);
-    const saveProcessedUrls = vi.fn().mockResolvedValue(undefined);
-
-    const result = await collectAndSummarize(
-      { genAiClient, slackWebhookUrl: "https://hooks.slack.test/xxx" },
-      { fetchArticles, summarize, publish, loadProcessedUrls, saveProcessedUrls },
-    );
+    const result = await collectAndSummarize({ genAiClient, slackWebhookUrl }, deps);
 
     expect(result).toEqual([]);
-    expect(summarize).not.toHaveBeenCalled();
-    expect(publish).not.toHaveBeenCalled();
-    expect(saveProcessedUrls).not.toHaveBeenCalled();
+    expect(deps.summarize).not.toHaveBeenCalled();
+    expect(deps.publish).not.toHaveBeenCalled();
+    expect(deps.saveProcessedUrls).not.toHaveBeenCalled();
   });
 
   it("propagates errors from the publish step without recording the articles as processed", async () => {
     const articles: Article[] = [{ title: "A1", link: "https://zenn.dev/a1" }];
+    const deps = buildDeps({
+      fetchArticles: vi.fn().mockResolvedValue(articles),
+      summarize: vi.fn().mockResolvedValue([{ ...articles[0], summary }]),
+      publish: vi.fn().mockRejectedValue(new Error("slack down")),
+    });
 
-    const fetchArticles = vi.fn().mockResolvedValue(articles);
-    const summarize = vi.fn().mockResolvedValue([{ ...articles[0], summary }]);
-    const publish = vi.fn().mockRejectedValue(new Error("slack down"));
-    const loadProcessedUrls = vi.fn().mockResolvedValue([]);
-    const saveProcessedUrls = vi.fn().mockResolvedValue(undefined);
-
-    await expect(
-      collectAndSummarize(
-        { genAiClient, slackWebhookUrl: "https://hooks.slack.test/xxx" },
-        { fetchArticles, summarize, publish, loadProcessedUrls, saveProcessedUrls },
-      ),
-    ).rejects.toThrow("slack down");
-    expect(saveProcessedUrls).not.toHaveBeenCalled();
+    await expect(collectAndSummarize({ genAiClient, slackWebhookUrl }, deps)).rejects.toThrow("slack down");
+    expect(deps.saveProcessedUrls).not.toHaveBeenCalled();
   });
 });
