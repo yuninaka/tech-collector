@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { ApiError } from "@google/genai";
 import { summarizeArticle } from "../../src/infrastructure/ai/geminiSummarizer";
 import { Article } from "../../src/domain/article";
 
@@ -43,5 +44,50 @@ describe("summarizeArticle", () => {
     const genAiClient = { models: { generateContent: generateContentMock } };
 
     await expect(summarizeArticle(genAiClient, article)).rejects.toThrow(article.link);
+  });
+
+  it("retries a retryable error and succeeds once the API recovers", async () => {
+    vi.useFakeTimers();
+    try {
+      const generateContentMock = vi
+        .fn()
+        .mockRejectedValueOnce(new ApiError({ message: "high demand", status: 503 }))
+        .mockRejectedValueOnce(new ApiError({ message: "high demand", status: 503 }))
+        .mockResolvedValueOnce({ text: JSON.stringify({ summary: "sum", tags: ["t"], target: "target" }) });
+      const genAiClient = { models: { generateContent: generateContentMock } };
+
+      const resultPromise = summarizeArticle(genAiClient, article);
+      await vi.runAllTimersAsync();
+
+      await expect(resultPromise).resolves.toEqual({ summary: "sum", tags: ["t"], target: "target" });
+      expect(generateContentMock).toHaveBeenCalledTimes(3);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("gives up after the max retry attempts and throws a contextual error", async () => {
+    vi.useFakeTimers();
+    try {
+      const generateContentMock = vi.fn().mockRejectedValue(new ApiError({ message: "high demand", status: 503 }));
+      const genAiClient = { models: { generateContent: generateContentMock } };
+
+      const resultPromise = summarizeArticle(genAiClient, article);
+      const assertion = expect(resultPromise).rejects.toThrow(article.link);
+      await vi.runAllTimersAsync();
+      await assertion;
+
+      expect(generateContentMock).toHaveBeenCalledTimes(4);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("does not retry a non-retryable error", async () => {
+    const generateContentMock = vi.fn().mockRejectedValue(new ApiError({ message: "bad request", status: 400 }));
+    const genAiClient = { models: { generateContent: generateContentMock } };
+
+    await expect(summarizeArticle(genAiClient, article)).rejects.toThrow(article.link);
+    expect(generateContentMock).toHaveBeenCalledTimes(1);
   });
 });
