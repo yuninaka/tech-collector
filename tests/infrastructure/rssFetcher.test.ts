@@ -33,9 +33,25 @@ describe("fetchLatestArticles", () => {
     expect(parseURLMock).toHaveBeenCalledWith("https://zenn.dev/feed");
   });
 
+  it("falls back to empty strings when a feed item has no title or link", async () => {
+    parseURLMock.mockResolvedValue({
+      items: [{ title: undefined, link: undefined, contentSnippet: "snippet", isoDate: "2026-08-17T00:00:00Z" }],
+    });
+
+    const articles = await fetchLatestArticles("https://zenn.dev/feed");
+
+    expect(articles).toEqual([{ title: "", link: "", contentSnippet: "snippet", isoDate: "2026-08-17T00:00:00Z" }]);
+  });
+
   it("throws a contextual error when parsing fails", async () => {
     parseURLMock.mockRejectedValue(new Error("network down"));
 
     await expect(fetchLatestArticles("https://zenn.dev/feed")).rejects.toThrow(/https:\/\/zenn\.dev\/feed/);
+  });
+
+  it("throws a contextual error when parsing fails with a non-Error value", async () => {
+    parseURLMock.mockRejectedValue("network down");
+
+    await expect(fetchLatestArticles("https://zenn.dev/feed")).rejects.toThrow(/network down/);
   });
 });

@@ -41,4 +41,22 @@ describe("processedStore", () => {
     const raw = await readFile(storePath, "utf-8");
     expect(JSON.parse(raw)).toEqual(urls);
   });
+
+  it("throws a contextual error when the stored file is not valid JSON", async () => {
+    const storePath = await createStorePath();
+    await saveProcessedUrls([], storePath);
+    await writeFile(storePath, "not valid json{", "utf-8");
+
+    await expect(loadProcessedUrls(storePath)).rejects.toThrow(storePath);
+  });
+
+  it("throws a contextual error when saving fails", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "processed-store-"));
+    tempDirs.push(dir);
+    const blockingFilePath = join(dir, "blocking-file");
+    await writeFile(blockingFilePath, "not a directory", "utf-8");
+    const storePath = join(blockingFilePath, "processed.json");
+
+    await expect(saveProcessedUrls(["https://zenn.dev/a"], storePath)).rejects.toThrow(storePath);
+  });
 });
