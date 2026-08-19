@@ -6,6 +6,7 @@ const webhookUrl = "https://hooks.slack.test/services/xxx";
 
 const articles: SummarizedArticle[] = [
   {
+    source: "Zenn",
     title: "Article One",
     link: "https://zenn.dev/articles/one",
     contentSnippet: "snippet",
@@ -27,7 +28,7 @@ const expectedBlocks = [
     type: "section",
     text: {
       type: "mrkdwn",
-      text: ["*<https://zenn.dev/articles/one|Article One>*", "要約1", "*対象:* 初級者向け", "*タグ:* `TypeScript` `Vitest`"].join("\n"),
+      text: ["*[Zenn]* *<https://zenn.dev/articles/one|Article One>*", "要約1", "*対象:* 初級者向け", "*タグ:* `TypeScript` `Vitest`"].join("\n"),
     },
   },
 ];

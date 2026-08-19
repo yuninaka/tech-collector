@@ -1,13 +1,17 @@
 import { describe, expect, it, vi } from "vitest";
 import { collectAndSummarize, CollectAndSummarizeDeps } from "../../src/usecases/collectAndSummarize";
-import { Article, ArticleSummary } from "../../src/domain/article";
+import { Article, ArticleFetcher, ArticleSummary } from "../../src/domain/article";
 
 const genAiClient = { models: { generateContent: vi.fn() } };
 const slackWebhookUrl = "https://hooks.slack.test/xxx";
 const summary: ArticleSummary = { summary: "sum", tags: ["t"], target: "target" };
 
+const buildFetcher = (source: string, articles: Article[]): ArticleFetcher => ({
+  source,
+  fetch: vi.fn().mockResolvedValue(articles),
+});
+
 const buildDeps = (overrides: Partial<CollectAndSummarizeDeps> = {}): CollectAndSummarizeDeps => ({
-  fetchArticles: vi.fn().mockResolvedValue([]),
   summarize: vi.fn().mockResolvedValue([]),
   publish: vi.fn().mockResolvedValue(undefined),
   loadProcessedUrls: vi.fn().mockResolvedValue([]),
@@ -16,43 +20,54 @@ const buildDeps = (overrides: Partial<CollectAndSummarizeDeps> = {}): CollectAnd
 });
 
 describe("collectAndSummarize", () => {
-  it("fetches, summarizes in a single batch, publishes, and records unprocessed articles", async () => {
-    const articles: Article[] = [
-      { title: "A1", link: "https://zenn.dev/a1", contentSnippet: "s1" },
-      { title: "A2", link: "https://zenn.dev/a2", contentSnippet: "s2" },
-    ];
-    const summarized = [
-      { ...articles[0], summary },
-      { ...articles[1], summary },
-    ];
+  it("fetches from every source in parallel, summarizes in a single batch, publishes, and records unprocessed articles", async () => {
+    const zennArticles: Article[] = [{ source: "Zenn", title: "Z1", link: "https://zenn.dev/z1", contentSnippet: "s1", isoDate: "2026-08-17T00:00:00Z" }];
+    const qiitaArticles: Article[] = [{ source: "Qiita", title: "Q1", link: "https://qiita.com/q1", contentSnippet: "s2", isoDate: "2026-08-16T00:00:00Z" }];
+    const fetchers = [buildFetcher("Zenn", zennArticles), buildFetcher("Qiita", qiitaArticles)];
+    const allArticles = [...zennArticles, ...qiitaArticles];
+    const summarized = allArticles.map((article) => ({ ...article, summary }));
     const deps = buildDeps({
-      fetchArticles: vi.fn().mockResolvedValue(articles),
       summarize: vi.fn().mockResolvedValue(summarized),
       loadProcessedUrls: vi.fn().mockResolvedValue(["https://zenn.dev/old"]),
     });
 
-    const result = await collectAndSummarize({ genAiClient, slackWebhookUrl }, deps);
+    const result = await collectAndSummarize({ genAiClient, slackWebhookUrl, fetchers }, deps);
 
     expect(result).toEqual(summarized);
-    expect(deps.summarize).toHaveBeenCalledTimes(1);
-    expect(deps.summarize).toHaveBeenCalledWith(genAiClient, articles);
+    expect(fetchers[0]?.fetch).toHaveBeenCalledTimes(1);
+    expect(fetchers[1]?.fetch).toHaveBeenCalledTimes(1);
+    expect(deps.summarize).toHaveBeenCalledWith(genAiClient, allArticles);
     expect(deps.publish).toHaveBeenCalledWith(slackWebhookUrl, result);
-    expect(deps.saveProcessedUrls).toHaveBeenCalledWith(["https://zenn.dev/old", "https://zenn.dev/a1", "https://zenn.dev/a2"]);
+    expect(deps.saveProcessedUrls).toHaveBeenCalledWith(["https://zenn.dev/old", "https://zenn.dev/z1", "https://qiita.com/q1"]);
+  });
+
+  it("sorts merged articles newest-first and selects only the top maxArticles", async () => {
+    const zennArticles: Article[] = [
+      { source: "Zenn", title: "Old", link: "https://zenn.dev/old", isoDate: "2026-08-10T00:00:00Z" },
+      { source: "Zenn", title: "Newest", link: "https://zenn.dev/newest", isoDate: "2026-08-19T00:00:00Z" },
+    ];
+    const qiitaArticles: Article[] = [{ source: "Qiita", title: "Middle", link: "https://qiita.com/middle", isoDate: "2026-08-15T00:00:00Z" }];
+    const fetchers = [buildFetcher("Zenn", zennArticles), buildFetcher("Qiita", qiitaArticles)];
+    const deps = buildDeps();
+
+    await collectAndSummarize({ genAiClient, slackWebhookUrl, fetchers, maxArticles: 2 }, deps);
+
+    expect(deps.summarize).toHaveBeenCalledWith(genAiClient, [zennArticles[1], qiitaArticles[0]]);
   });
 
   it("skips already-processed articles", async () => {
     const articles: Article[] = [
-      { title: "A1", link: "https://zenn.dev/a1" },
-      { title: "A2", link: "https://zenn.dev/a2" },
+      { source: "Zenn", title: "A1", link: "https://zenn.dev/a1" },
+      { source: "Zenn", title: "A2", link: "https://zenn.dev/a2" },
     ];
     const summarized = [{ ...articles[1], summary }];
+    const fetchers = [buildFetcher("Zenn", articles)];
     const deps = buildDeps({
-      fetchArticles: vi.fn().mockResolvedValue(articles),
       summarize: vi.fn().mockResolvedValue(summarized),
       loadProcessedUrls: vi.fn().mockResolvedValue(["https://zenn.dev/a1"]),
     });
 
-    const result = await collectAndSummarize({ genAiClient, slackWebhookUrl }, deps);
+    const result = await collectAndSummarize({ genAiClient, slackWebhookUrl, fetchers }, deps);
 
     expect(result).toEqual(summarized);
     expect(deps.summarize).toHaveBeenCalledWith(genAiClient, [articles[1]]);
@@ -61,13 +76,11 @@ describe("collectAndSummarize", () => {
   });
 
   it("skips summarize, publish, and save when every article is already processed", async () => {
-    const articles: Article[] = [{ title: "A1", link: "https://zenn.dev/a1" }];
-    const deps = buildDeps({
-      fetchArticles: vi.fn().mockResolvedValue(articles),
-      loadProcessedUrls: vi.fn().mockResolvedValue(["https://zenn.dev/a1"]),
-    });
+    const articles: Article[] = [{ source: "Zenn", title: "A1", link: "https://zenn.dev/a1" }];
+    const fetchers = [buildFetcher("Zenn", articles)];
+    const deps = buildDeps({ loadProcessedUrls: vi.fn().mockResolvedValue(["https://zenn.dev/a1"]) });
 
-    const result = await collectAndSummarize({ genAiClient, slackWebhookUrl }, deps);
+    const result = await collectAndSummarize({ genAiClient, slackWebhookUrl, fetchers }, deps);
 
     expect(result).toEqual([]);
     expect(deps.summarize).not.toHaveBeenCalled();
@@ -76,14 +89,21 @@ describe("collectAndSummarize", () => {
   });
 
   it("propagates errors from the publish step without recording the articles as processed", async () => {
-    const articles: Article[] = [{ title: "A1", link: "https://zenn.dev/a1" }];
+    const articles: Article[] = [{ source: "Zenn", title: "A1", link: "https://zenn.dev/a1" }];
+    const fetchers = [buildFetcher("Zenn", articles)];
     const deps = buildDeps({
-      fetchArticles: vi.fn().mockResolvedValue(articles),
       summarize: vi.fn().mockResolvedValue([{ ...articles[0], summary }]),
       publish: vi.fn().mockRejectedValue(new Error("slack down")),
     });
 
-    await expect(collectAndSummarize({ genAiClient, slackWebhookUrl }, deps)).rejects.toThrow("slack down");
+    await expect(collectAndSummarize({ genAiClient, slackWebhookUrl, fetchers }, deps)).rejects.toThrow("slack down");
     expect(deps.saveProcessedUrls).not.toHaveBeenCalled();
+  });
+
+  it("propagates errors when one of the source fetchers fails", async () => {
+    const fetchers = [buildFetcher("Zenn", []), { source: "Qiita", fetch: vi.fn().mockRejectedValue(new Error("feed down")) }];
+    const deps = buildDeps();
+
+    await expect(collectAndSummarize({ genAiClient, slackWebhookUrl, fetchers }, deps)).rejects.toThrow("feed down");
   });
 });

@@ -17,7 +17,12 @@ const buildBlocks = (articles: SummarizedArticle[]): SlackBlock[] => {
         type: "section",
         text: {
           type: "mrkdwn",
-          text: [`*<${article.link}|${article.title}>*`, article.summary.summary, `*対象:* ${article.summary.target}`, `*タグ:* ${tagList}`].join("\n"),
+          text: [
+            `*[${article.source}]* *<${article.link}|${article.title}>*`,
+            article.summary.summary,
+            `*対象:* ${article.summary.target}`,
+            `*タグ:* ${tagList}`,
+          ].join("\n"),
         },
       },
     ];

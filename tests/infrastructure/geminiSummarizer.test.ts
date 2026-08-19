@@ -4,8 +4,8 @@ import { summarizeArticles } from "../../src/infrastructure/ai/geminiSummarizer"
 import { Article } from "../../src/domain/article";
 
 const articles: Article[] = [
-  { title: "Article One", link: "https://zenn.dev/articles/one", contentSnippet: "snippet one" },
-  { title: "Article Two", link: "https://zenn.dev/articles/two", contentSnippet: "snippet two" },
+  { source: "Zenn", title: "Article One", link: "https://zenn.dev/articles/one", contentSnippet: "snippet one" },
+  { source: "Zenn", title: "Article Two", link: "https://zenn.dev/articles/two", contentSnippet: "snippet two" },
 ];
 
 describe("summarizeArticles", () => {

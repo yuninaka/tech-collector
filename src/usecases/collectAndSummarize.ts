@@ -1,11 +1,11 @@
-import { fetchLatestArticles } from "../infrastructure/fetchers/rssFetcher";
 import { summarizeArticles, GenerateContentClient } from "../infrastructure/ai/geminiSummarizer";
 import { publishToSlack } from "../infrastructure/publishers/slackPublisher";
 import { loadProcessedUrls, saveProcessedUrls } from "../infrastructure/store/processedStore";
-import { Article, SummarizedArticle } from "../domain/article";
+import { Article, ArticleFetcher, SummarizedArticle } from "../domain/article";
+
+const DEFAULT_MAX_ARTICLES = 5;
 
 export interface CollectAndSummarizeDeps {
-  fetchArticles: typeof fetchLatestArticles;
   summarize: typeof summarizeArticles;
   publish: typeof publishToSlack;
   loadProcessedUrls: typeof loadProcessedUrls;
@@ -15,10 +15,11 @@ export interface CollectAndSummarizeDeps {
 export interface CollectAndSummarizeParams {
   genAiClient: GenerateContentClient;
   slackWebhookUrl: string;
+  fetchers: ArticleFetcher[];
+  maxArticles?: number;
 }
 
 const defaultDeps: CollectAndSummarizeDeps = {
-  fetchArticles: fetchLatestArticles,
   summarize: summarizeArticles,
   publish: publishToSlack,
   loadProcessedUrls,
@@ -30,9 +31,15 @@ const excludeProcessed = (articles: Article[], processedUrls: string[]): Article
   return articles.filter((article) => !processedUrlSet.has(article.link));
 };
 
+const articleTimestamp = (article: Article): number => (article.isoDate ? Date.parse(article.isoDate) : 0);
+
+const byNewestFirst = (articleX: Article, articleY: Article): number => articleTimestamp(articleY) - articleTimestamp(articleX);
+
 export const collectAndSummarize = async (params: CollectAndSummarizeParams, deps: CollectAndSummarizeDeps = defaultDeps): Promise<SummarizedArticle[]> => {
-  const [articles, processedUrls] = await Promise.all([deps.fetchArticles(), deps.loadProcessedUrls()]);
-  const unprocessedArticles = excludeProcessed(articles, processedUrls);
+  const maxArticles = params.maxArticles ?? DEFAULT_MAX_ARTICLES;
+  const [articlesBySource, processedUrls] = await Promise.all([Promise.all(params.fetchers.map((fetcher) => fetcher.fetch())), deps.loadProcessedUrls()]);
+  const allArticles = articlesBySource.flat();
+  const unprocessedArticles = excludeProcessed(allArticles, processedUrls).sort(byNewestFirst).slice(0, maxArticles);
 
   if (unprocessedArticles.length === 0) {
     return [];
