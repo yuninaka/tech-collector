@@ -1,10 +1,16 @@
 import { z } from "zod";
 
 export interface Article {
+  source: string;
   title: string;
   link: string;
   contentSnippet?: string;
   isoDate?: string;
+}
+
+export interface ArticleFetcher {
+  readonly source: string;
+  fetch: () => Promise<Article[]>;
 }
 
 export const articleSummarySchema = z.object({

@@ -1,6 +1,8 @@
 import "dotenv/config";
 import { GoogleGenAI } from "@google/genai";
 import { collectAndSummarize } from "./usecases/collectAndSummarize";
+import { createRssFetcher } from "./infrastructure/fetchers/rssFetcher";
+import { parseArticleSources } from "./config/articleSources";
 
 const main = async (): Promise<void> => {
   const geminiApiKey = process.env.GEMINI_API_KEY;
@@ -14,7 +16,8 @@ const main = async (): Promise<void> => {
   }
 
   const genAiClient = new GoogleGenAI({ apiKey: geminiApiKey });
-  const summarized = await collectAndSummarize({ genAiClient, slackWebhookUrl });
+  const fetchers = parseArticleSources(process.env.ARTICLE_SOURCES).map((source) => createRssFetcher(source.source, source.feedUrl));
+  const summarized = await collectAndSummarize({ genAiClient, slackWebhookUrl, fetchers });
 
   console.log(`Published ${String(summarized.length)} articles to Slack.`);
 };
