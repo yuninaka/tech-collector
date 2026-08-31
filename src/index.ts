@@ -3,6 +3,7 @@ import { GoogleGenAI } from "@google/genai";
 import { collectAndSummarize } from "./usecases/collectAndSummarize";
 import { createRssFetcher } from "./infrastructure/fetchers/rssFetcher";
 import { parseArticleSources } from "./config/articleSources";
+import { parsePriorityKeywords } from "./config/priorityKeywords";
 
 const main = async (): Promise<void> => {
   const geminiApiKey = process.env.GEMINI_API_KEY;
@@ -17,7 +18,8 @@ const main = async (): Promise<void> => {
 
   const genAiClient = new GoogleGenAI({ apiKey: geminiApiKey });
   const fetchers = parseArticleSources(process.env.ARTICLE_SOURCES).map((source) => createRssFetcher(source.source, source.feedUrl));
-  const summarized = await collectAndSummarize({ genAiClient, slackWebhookUrl, fetchers });
+  const priorityKeywords = parsePriorityKeywords(process.env.PRIORITY_KEYWORDS);
+  const summarized = await collectAndSummarize({ genAiClient, slackWebhookUrl, fetchers, priorityKeywords });
 
   console.log(`Published ${String(summarized.length)} articles to Slack.`);
 };
