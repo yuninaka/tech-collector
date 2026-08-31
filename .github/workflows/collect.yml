@@ -30,6 +30,8 @@ jobs:
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          # 実務寄りの記事に絞るため、はてブ人気エントリー(ニュース/バズ記事が混ざりやすい)を除外し、Zenn/Qiitaのみ収集する。
+          ARTICLE_SOURCES: '[{"source":"Zenn","feedUrl":"https://zenn.dev/feed"},{"source":"Qiita","feedUrl":"https://qiita.com/popular-items/feed"}]'
         run: yarn start
 
       - name: Commit updated processed.json
